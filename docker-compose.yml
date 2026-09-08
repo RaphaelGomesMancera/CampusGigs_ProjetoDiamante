@@ -1,0 +1,46 @@
+# -----------------------------------------------------------------------------
+# docker-compose.yml
+# -----------------------------------------------------------------------------
+# Sobe a API e o Postgres juntos — ninguém precisa instalar banco na máquina
+# para rodar o projeto (requisito do CP1).
+#
+#   docker-compose up --build
+#
+# A API só inicia depois que o Postgres passa no healthcheck, evitando o
+# erro clássico de "Flyway tentou migrar antes do banco estar pronto".
+# -----------------------------------------------------------------------------
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: campusgigs-db
+    environment:
+      POSTGRES_DB: campusgigs
+      POSTGRES_USER: campusgigs
+      POSTGRES_PASSWORD: campusgigs
+    ports:
+      - "5432:5432"
+    volumes:
+      - campusgigs-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U campusgigs -d campusgigs"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: .
+    container_name: campusgigs-api
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: campusgigs
+      DB_USER: campusgigs
+      DB_PASSWORD: campusgigs
+    ports:
+      - "8080:8080"
+
+volumes:
+  campusgigs-db-data:

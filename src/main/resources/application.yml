@@ -1,0 +1,46 @@
+# -----------------------------------------------------------------------------
+# application.yml
+# -----------------------------------------------------------------------------
+# Configuração padrão. As variáveis de ambiente (DB_*) são injetadas pelo
+# docker-compose.yml — assim o mesmo jar roda tanto localmente (com um
+# Postgres manual) quanto dentro do container, sem precisar de dois arquivos.
+# -----------------------------------------------------------------------------
+spring:
+  application:
+    name: campusgigs-api
+
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:campusgigs}
+    username: ${DB_USER:campusgigs}
+    password: ${DB_PASSWORD:campusgigs}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      # Flyway é o dono do schema — Hibernate só valida que a entidade
+      # bate com o que já existe no banco, nunca gera DDL sozinho.
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+server:
+  port: 8080
+
+# Chave usada para assinar os tokens JWT (CP2/CP3). Em produção isso viria
+# de uma variável de ambiente/secret — nunca commitado em texto puro num
+# projeto real; aqui fica com um valor padrão só para rodar localmente.
+app:
+  jwt:
+    secret: ${JWT_SECRET:campusgigs-chave-de-desenvolvimento-nao-usar-em-producao-0001}
+    expiracao-minutos: ${JWT_EXPIRATION_MINUTES:120}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
