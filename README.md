@@ -55,18 +55,22 @@ http://localhost:8080/swagger-ui.html
 
 ## Exemplo de chamada autenticada
 
-*(Endpoints de autenticação chegam no CP2 — este exemplo será atualizado
-assim que `/auth/registrar` e `/auth/login` estiverem prontos.)*
-
 ```bash
-# 1. Login para obter o token
+# 1. Cadastrar um usuário
+curl -X POST http://localhost:8080/auth/registrar \
+  -H "Content-Type: application/json" \
+  -d '{"nome": "Ana Souza", "email": "ana@fiap.com.br", "senha": "senha123", "cep": "01001000"}'
+
+# 2. Login para obter o token
 curl -X POST http://localhost:8080/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email": "aluno@fiap.com.br", "senha": "senha123"}'
+  -d '{"email": "ana@fiap.com.br", "senha": "senha123"}'
+# -> { "tokenAcesso": "eyJhbGciOi...", "tipo": "Bearer" }
 
-# 2. Usar o token retornado nas requisições seguintes
+# 3. Usar o token retornado nas requisições seguintes (endpoints de
+#    serviços/contratações chegam no CP3/CP4)
 curl -X GET http://localhost:8080/servicos \
-  -H "Authorization: Bearer <token>"
+  -H "Authorization: Bearer eyJhbGciOi..."
 ```
 
 ## Estrutura do projeto
