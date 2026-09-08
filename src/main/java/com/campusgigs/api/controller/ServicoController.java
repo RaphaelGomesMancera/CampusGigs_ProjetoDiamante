@@ -53,6 +53,11 @@ public class ServicoController {
         return ResponseEntity.ok(ServicoResponse.de(servicoService.buscarPorId(id)));
     }
 
+    @PutMapping("/{id}")
+    public ResponseEntity<ServicoResponse> editar(@PathVariable Long id, @Valid @RequestBody PublicarServicoRequest request) {
+        return ResponseEntity.ok(ServicoResponse.de(servicoService.editar(id, request)));
+    }
+
     @PatchMapping("/{id}/encerrar")
     public ResponseEntity<ServicoResponse> encerrar(@PathVariable Long id) {
         return ResponseEntity.ok(ServicoResponse.de(servicoService.encerrar(id)));

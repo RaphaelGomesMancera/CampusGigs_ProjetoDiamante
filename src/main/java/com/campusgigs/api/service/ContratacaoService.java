@@ -9,12 +9,12 @@ import com.campusgigs.api.security.UsuarioAutenticadoProvider;
 import org.springframework.stereotype.Service;
 
 /**
- * ContratacaoService (CP3)
+ * ContratacaoService (CP4)
  * -----------------------------------------------------------------------
- * A checagem de "serviço precisa estar ATIVO" é regra de negócio pura
- * (não depende de papel), por isso já entra aqui no CP3. A checagem de
- * "não pode contratar o próprio serviço" é sobre identidade/papel e fica
- * para o CP4, junto com as outras regras de autorização.
+ * Regra do enunciado aplicada aqui: "um usuário não pode contratar o
+ * próprio serviço". Comparamos por id do prestador, não por igualdade de
+ * objeto — os dois usuários vêm de queries diferentes (buscarPorEmail do
+ * contratante vs. o prestador já carregado dentro do Servico).
  * -----------------------------------------------------------------------
  */
 @Service
@@ -45,6 +45,10 @@ public class ContratacaoService {
         }
 
         Usuario contratante = usuarioService.buscarPorEmail(usuarioAutenticadoProvider.emailAtual());
+
+        if (servico.pertenceA(contratante)) {
+            throw new RegraDeNegocioException("Você não pode contratar o próprio serviço.");
+        }
 
         Contratacao contratacao = new Contratacao(servico, contratante);
         return contratacaoRepository.save(contratacao);
