@@ -13,13 +13,10 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 /**
  * SecurityConfig
  * -----------------------------------------------------------------------
- * CP2: só o essencial para cadastro/login funcionarem — BCrypt para senha
- * e `/auth/**` liberado sem autenticação. Sessão é STATELESS desde já
- * porque a API usa token, nunca cookie de sessão.
- *
- * O filtro que efetivamente valida o JWT em endpoints protegidos
- * (JwtAuthFilter) é registrado aqui, mas as regras de "qual endpoint
- * exige qual papel" só ficam completas no CP4.
+ * - BCrypt para senha; /auth/** e Swagger públicos; demais endpoints
+ *   exigem JWT válido.
+ * - exceptionHandling separa 401 (sem token / token inválido) de 403
+ *   (autenticado, mas sem permissão), como pede o enunciado.
  * -----------------------------------------------------------------------
  */
 @Configuration
@@ -27,9 +24,17 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
+    private final JsonAuthenticationEntryPoint authenticationEntryPoint;
+    private final JsonAccessDeniedHandler accessDeniedHandler;
 
-    public SecurityConfig(JwtAuthFilter jwtAuthFilter) {
+    public SecurityConfig(
+            JwtAuthFilter jwtAuthFilter,
+            JsonAuthenticationEntryPoint authenticationEntryPoint,
+            JsonAccessDeniedHandler accessDeniedHandler
+    ) {
         this.jwtAuthFilter = jwtAuthFilter;
+        this.authenticationEntryPoint = authenticationEntryPoint;
+        this.accessDeniedHandler = accessDeniedHandler;
     }
 
     @Bean
@@ -44,9 +49,13 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/auth/**").permitAll()
-                        .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                        .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
                         .requestMatchers("/servicos", "/servicos/**").authenticated()
                         .anyRequest().authenticated()
+                )
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint(authenticationEntryPoint)
+                        .accessDeniedHandler(accessDeniedHandler)
                 )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 

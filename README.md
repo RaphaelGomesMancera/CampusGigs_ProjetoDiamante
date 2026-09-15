@@ -29,9 +29,8 @@ Java, Maven ou Postgres na máquina.
 docker-compose up --build
 ```
 
-A API sobe em `http://localhost:8080`. O Postgres sobe junto, já com a
-primeira migration (`V1__schema_inicial.sql`) aplicada automaticamente
-pelo Flyway na inicialização da aplicação.
+A API sobe em `http://localhost:8080`. O Postgres sobe junto, com as
+migrations Flyway aplicadas automaticamente (`V1` schema + `V2` admin demo).
 
 Para derrubar tudo (mantendo os dados do banco no volume):
 
@@ -52,6 +51,18 @@ Com a API no ar, a lista de endpoints fica disponível em:
 ```
 http://localhost:8080/swagger-ui.html
 ```
+
+## Usuário ADMIN de demonstração
+
+Criado automaticamente pela migration `V2__usuario_admin_demo.sql`:
+
+| Campo | Valor |
+|---|---|
+| E-mail | `admin@campusgigs.local` |
+| Senha | `senha123` |
+| Papel | `ADMIN` |
+
+Use esse usuário para provar que um ADMIN pode encerrar o serviço de outro aluno.
 
 ## Endpoints
 
@@ -74,26 +85,57 @@ http://localhost:8080/swagger-ui.html
 # 1. Cadastrar um usuário (o CEP é resolvido para cidade/UF automaticamente)
 curl -X POST http://localhost:8080/auth/registrar \
   -H "Content-Type: application/json" \
-  -d '{"nome": "Ana Souza", "email": "ana@fiap.com.br", "senha": "senha123", "cep": "01001000"}'
+  -d "{\"nome\": \"Ana Souza\", \"email\": \"ana@fiap.com.br\", \"senha\": \"senha123\", \"cep\": \"01001000\"}"
 
 # 2. Login para obter o token
 curl -X POST http://localhost:8080/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email": "ana@fiap.com.br", "senha": "senha123"}'
+  -d "{\"email\": \"ana@fiap.com.br\", \"senha\": \"senha123\"}"
 # -> { "tokenAcesso": "eyJhbGciOi...", "tipo": "Bearer" }
 
 # 3. Usar o token nas requisições seguintes
 curl -X POST http://localhost:8080/servicos \
   -H "Authorization: Bearer eyJhbGciOi..." \
   -H "Content-Type: application/json" \
-  -d '{"titulo": "Aulas de Cálculo 1", "descricao": "Reforço para provas e listas.", "categoria": "AULA_PARTICULAR", "preco": 50.00}'
-
-# 4. Caso de acesso negado por papel: outro usuário tentando encerrar um
-#    serviço que não é dele -> 403 Forbidden
-curl -X PATCH http://localhost:8080/servicos/1/encerrar \
-  -H "Authorization: Bearer <token-de-outro-usuario>"
-# -> { "status": 403, "erro": "Acesso negado", "mensagem": "Você só pode encerrar os seus próprios serviços." }
+  -d "{\"titulo\": \"Aulas de Calculo 1\", \"descricao\": \"Reforco para provas e listas.\", \"categoria\": \"AULA_PARTICULAR\", \"preco\": 50.00}"
 ```
+
+## Evidência de testes manuais
+
+### 1) Sem token → 401 Unauthorized
+
+```bash
+curl -i -X GET http://localhost:8080/servicos
+# HTTP/1.1 401
+# {"status":401,"erro":"Não autenticado","mensagem":"Token ausente, inválido ou expirado."}
+```
+
+### 2) Acesso negado por papel/posse → 403 Forbidden
+
+Cadastre um segundo usuário (Bruno), faça login e tente encerrar o serviço da Ana:
+
+```bash
+curl -i -X PATCH http://localhost:8080/servicos/1/encerrar \
+  -H "Authorization: Bearer <token-do-bruno>"
+# HTTP/1.1 403
+# {"status":403,"erro":"Acesso negado","mensagem":"Você só pode encerrar os seus próprios serviços."}
+```
+
+### 3) ADMIN encerra serviço de outro → 200 OK
+
+```bash
+# Login do admin (seed V2)
+curl -X POST http://localhost:8080/auth/login \
+  -H "Content-Type: application/json" \
+  -d "{\"email\": \"admin@campusgigs.local\", \"senha\": \"senha123\"}"
+
+curl -i -X PATCH http://localhost:8080/servicos/1/encerrar \
+  -H "Authorization: Bearer <token-do-admin>"
+# HTTP/1.1 200 — serviço encerrado
+```
+
+Também é possível repetir esses cenários pelo Swagger UI em
+`http://localhost:8080/swagger-ui.html` (Authorize com o Bearer token).
 
 ## Estrutura do projeto
 
@@ -101,11 +143,12 @@ curl -X PATCH http://localhost:8080/servicos/1/encerrar \
 src/main/java/com/campusgigs/api/
   model/        -> entidades JPA (Usuario, Servico, Contratacao) e enums
   repository/   -> Spring Data JPA repositories
-  config/       -> configuração (Security, JWT, HttpExchange — a partir do CP2)
+  security/     -> JWT, filtro, 401/403 em JSON
+  config/       -> HttpExchange (ViaCEP)
   exception/    -> exceptions de domínio e handler centralizado de erros
 src/main/resources/
   application.yml
-  db/migration/ -> migrations do Flyway (uma por checkpoint que mexe no schema)
+  db/migration/ -> V1 schema inicial; V2 admin demo
 ```
 
 ## Checkpoints

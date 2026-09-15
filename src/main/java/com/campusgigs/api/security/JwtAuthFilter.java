@@ -60,6 +60,10 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 var authentication = new UsernamePasswordAuthenticationToken(email, null, authorities);
 
                 SecurityContextHolder.getContext().setAuthentication(authentication);
+            } else {
+                // Token presente mas inválido/expirado: limpa o contexto para o
+                // AuthenticationEntryPoint responder 401 (não 403).
+                SecurityContextHolder.clearContext();
             }
         }
 
